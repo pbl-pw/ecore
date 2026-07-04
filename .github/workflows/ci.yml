@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  # ── Format check ──────────────────────────────────────────────
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  # ── Clippy (nightly, required for const_trait_impl) ────────────
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  # ── Documentation ─────────────────────────────────────────────
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --workspace --all-features --no-deps --document-private-items
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  # ── Tests ─────────────────────────────────────────────────────
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Test (default features)
+        run: cargo test --workspace
+      - name: Test (all features)
+        run: cargo test --workspace --all-features
+
+  # ── Check no_std builds ───────────────────────────────────────
+  no-std:
+    name: no_std check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: thumbv7m-none-eabi
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check -p ecore --target thumbv7m-none-eabi --no-default-features
+      - run: cargo check -p ecore --target thumbv7m-none-eabi --no-default-features --features bitint
+      - run: cargo check -p ecore --target thumbv7m-none-eabi --no-default-features --features bitfld
+      - run: cargo check -p ecore --target thumbv7m-none-eabi --no-default-features --features ranged-int
+      - run: cargo check -p ecore --target thumbv7m-none-eabi --all-features
+      - run: cargo check -p ealloc --target thumbv7m-none-eabi
+
+  # ── Miri (unsafe code audit) ──────────────────────────────────
+  miri:
+    name: Miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo miri test --workspace --all-features

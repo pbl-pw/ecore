@@ -1,0 +1,34 @@
+[package]
+name = "ecore"
+version = "0.10.0"
+edition = "2024"
+rust-version = "1.87.0"
+description = "no_std bit-level integer types, bitfield structs/enums, ranged integers, and enum maps"
+license = "MIT"
+repository = "https://github.com/pbl-pw/ecore"
+documentation = "https://docs.rs/ecore"
+keywords = ["bitfield", "bitint", "no-std", "enum-map", "ranged-int"]
+categories = ["embedded", "no-std", "data-structures"]
+readme = "README.md"
+
+[dependencies]
+bytemuck = { version = "1", features = [
+	"derive",
+	"min_const_generics",
+	"const_zeroed",
+] }
+const-default = { version = "1", default-features = false, features = [
+	"derive",
+] }
+seq-macro = { version = "0", optional = true }
+ecore-macro = { version = "0.10.0", path = "../ecore-macro" }
+
+[dev-dependencies]
+rand = "0"
+
+[features]
+default = ["bitint", "bitfld", "ranged-int"]
+bitint = ["dep:seq-macro"]
+bitfld = ["bitint"]
+ranged-int = ["bitint", "bitfld"]
+varint = []

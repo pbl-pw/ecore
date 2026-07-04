@@ -1,0 +1,10 @@
+[workspace]
+members = [
+	"ecore",
+	"ecore-macro",
+	"ealloc",
+]
+resolver = "3"
+
+[workspace.package]
+rust-version = "1.87.0"
