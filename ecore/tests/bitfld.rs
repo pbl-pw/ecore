@@ -1,3 +1,6 @@
+#![allow(clippy::unusual_byte_groupings)]
+#![allow(clippy::transmute_int_to_bool)]
+
 use ecore::{
     bitfld::prelude::*,
     bitint::{i2, i3, u1, u2, u3, u4, u6, u7},

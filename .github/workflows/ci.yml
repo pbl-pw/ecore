@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   push:
@@ -11,42 +11,42 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
-  # ── Format check ──────────────────────────────────────────────
+  # --- Format check ---
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
-  # ── Clippy ────────────────────────────────────────────────────
+  # --- Clippy ---
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-  # ── Documentation ─────────────────────────────────────────────
+  # --- Documentation ---
   docs:
     name: Docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo doc --workspace --all-features --no-deps --document-private-items
         env:
           RUSTDOCFLAGS: -D warnings
 
-  # ── Tests ─────────────────────────────────────────────────────
+  # --- Tests ---
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -55,7 +55,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Test (default features)
@@ -63,12 +63,12 @@ jobs:
       - name: Test (all features)
         run: cargo test --workspace --all-features
 
-  # ── Check no_std builds ───────────────────────────────────────
+  # --- Check no_std builds ---
   no-std:
     name: no_std check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv7m-none-eabi
@@ -80,12 +80,12 @@ jobs:
       - run: cargo check -p ecore --target thumbv7m-none-eabi --all-features
       - run: cargo check -p ealloc --target thumbv7m-none-eabi
 
-  # ── Miri (unsafe code audit) ──────────────────────────────────
+  # --- Miri (unsafe code audit) ---
   miri:
     name: Miri
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: miri

@@ -72,8 +72,8 @@ fn test_block() {
 
     let mut buf = [0u64; 40000];
     let mut alc = Alloc::new(NoopMutex::new(), SimpleFirstFit { mark: PhantomData, first: None });
+    let range = buf[32768..].as_mut_ptr_range();
     let remain = unsafe { alc.init_with_slice(&mut buf) }.unwrap().unwrap();
-    let range = &mut buf[32768..].as_mut_ptr_range();
     let used = NonNull::new(range.start).unwrap();
     let end = NonNull::new(range.end).unwrap();
     assert_eq!(remain.addr(), used.addr());

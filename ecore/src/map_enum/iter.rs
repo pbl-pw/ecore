@@ -2,8 +2,7 @@ use core::marker::PhantomData;
 
 use crate::{
     Array, EnumMap, MapEnum,
-    bitfld::{BitsEnumReLayout, ReLayoutBitsEnum},
-    int::{BasicInt, BasicUInt, PrimaryInt},
+    int::{BasicInt, PrimaryInt},
 };
 
 /// Extension of [`MapEnum`] providing compile-time iteration of enum discriminants
@@ -61,8 +60,9 @@ impl<Ids: MapEnum, Name: AsRef<str>, Value: PrimaryInt> EnumDiscriminantsIterato
     }
 }
 
-impl<Enum: MapEnum + ReLayoutBitsEnum, Bits: BasicUInt, const TAG_START: u32, const PAYLOAD_START: u32> MapEnum
-    for BitsEnumReLayout<Enum, Bits, TAG_START, PAYLOAD_START>
+#[cfg(feature = "bitfld")]
+impl<Enum: MapEnum + crate::bitfld::ReLayoutBitsEnum, Bits: crate::int::BasicUInt, const TAG_START: u32, const PAYLOAD_START: u32> MapEnum
+    for crate::bitfld::BitsEnumReLayout<Enum, Bits, TAG_START, PAYLOAD_START>
 {
     type Discriminant = Enum::Discriminant;
     type Array = Enum::Array;
@@ -76,8 +76,9 @@ impl<Enum: MapEnum + ReLayoutBitsEnum, Bits: BasicUInt, const TAG_START: u32, co
     }
 }
 
-impl<Enum: IterEnumDiscriminants + ReLayoutBitsEnum, Bits: BasicUInt, const TAG_START: u32, const PAYLOAD_START: u32> IterEnumDiscriminants
-    for BitsEnumReLayout<Enum, Bits, TAG_START, PAYLOAD_START>
+#[cfg(feature = "bitfld")]
+impl<Enum: IterEnumDiscriminants + crate::bitfld::ReLayoutBitsEnum, Bits: crate::int::BasicUInt, const TAG_START: u32, const PAYLOAD_START: u32>
+    IterEnumDiscriminants for crate::bitfld::BitsEnumReLayout<Enum, Bits, TAG_START, PAYLOAD_START>
 {
     type Value = Enum::Value;
     type Discriminants = Enum::Discriminants;

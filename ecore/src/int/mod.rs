@@ -310,5 +310,6 @@ mod varint;
 mod sealed {
     pub trait Sealed {}
 
+    #[cfg(feature = "bitint")]
     impl<T: super::PrimaryInt, const BITS: u32> Sealed for crate::bitint::BitInt<T, BITS> {}
 }

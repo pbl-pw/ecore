@@ -154,7 +154,7 @@ impl<StateElement: PrimaryUInt, Element, Manager: FreeBlockManager<StateElement 
         let block = ptr
             .cast::<u8>()
             .map_addr(|addr| unsafe { NonZero::new_unchecked((addr.get() + Joint::<StateElement, Element>::SIZE).next_multiple_of(Self::ELEMENT_ALIGN)) });
-        let Some(element_count) = ptr.len().checked_sub(unsafe { block.offset_from(ptr.cast()) as usize }).map(ElementCount::max_for_bytes) else {
+        let Some(element_count) = ptr.len().checked_sub(block.addr().get() - ptr.addr().get()).map(ElementCount::max_for_bytes) else {
             return Err(());
         };
         let element_count = if element_count >= Manager::MAX_ELEMENT_COUNT { Manager::MAX_ELEMENT_COUNT } else { element_count };

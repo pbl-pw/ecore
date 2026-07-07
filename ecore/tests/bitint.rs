@@ -1,4 +1,11 @@
 #![cfg(not(miri))]
+#![allow(clippy::unusual_byte_groupings)]
+#![allow(clippy::bool_assert_comparison)]
+#![allow(clippy::identity_op)]
+#![allow(clippy::manual_range_contains)]
+#![allow(clippy::manual_checked_ops)]
+#![allow(clippy::missing_const_for_thread_local)]
+#![allow(clippy::single_match)]
 
 use ecore::{
     bitint::{BitInt, i1, i7, u1, u7},
@@ -171,7 +178,7 @@ fn add() {
             assert_eq!(a.overflowing_add(b), (i7::cast_new(i + j), true));
             assert_eq!(a.saturating_add(b), i7::MAX);
             should_panic(|| unsafe { a.unchecked_add(b) });
-            assert_eq!(a.wrapping_add(b), i7::new(i + j | 0b1000_0000u8 as i8).unwrap());
+            assert_eq!(a.wrapping_add(b), i7::new((i + j) | 0b1000_0000u8 as i8).unwrap());
         }
     }
 
@@ -195,7 +202,7 @@ fn add() {
             assert_eq!(a.overflowing_add(b), (u7::cast_new(i + j), true));
             assert_eq!(a.saturating_add(b), u7::MAX);
             should_panic(|| unsafe { a.unchecked_add(b) });
-            assert_eq!(a.wrapping_add(b), u7::new(i + j & 0b0111_1111).unwrap());
+            assert_eq!(a.wrapping_add(b), u7::new((i + j) & 0b0111_1111).unwrap());
         }
     }
 }

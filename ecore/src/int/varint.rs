@@ -6,6 +6,10 @@ use crate::int::{BasicInt, CInt, CalcFitted, PrimaryInt, PrimarySInt, PrimaryUIn
 
 const DATA_BITS: u32 = u8::BITS - 1;
 
+/// Error returned when varint decoding fails due to malformed input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DecodeError;
+
 /// Variable-length integer encoding/decoding utilities.
 ///
 /// Uses a 7-bit-per-byte encoding scheme where the high bit of each byte
@@ -30,50 +34,58 @@ impl VarInt {
 
     /// max bytes for encoded int type
     pub const fn max_bytes_of<T: PrimaryInt>() -> usize {
-        const { (T::BITS as usize + 6) / 7 } // bits = n * 7, bits / 7 = n <= (bits + 6) / 7
+        const { (T::BITS as usize).div_ceil(7) }
     }
 
     /// decode unsigned PrimaryInt from bytes
-    pub const fn decode_unsigned<Tgt: PrimaryUInt>(data: &[u8]) -> Result<(Tgt, usize), ()> {
+    pub const fn decode_unsigned<Tgt: PrimaryUInt>(data: &[u8]) -> Result<(Tgt, usize), DecodeError> {
         if let Ok((v, len)) = unsafe { decode_unsigned_imp::<Tgt::CalcFitted>(data.as_ptr(), const { Tgt::CalcFitted::BITS - Tgt::BITS }, data.len()) } {
             Ok((CInt::cast_as(v), len))
         } else {
-            Err(())
+            Err(DecodeError)
         }
     }
 
     /// decode unsigned PrimaryInt from bytes ptr
-    pub const unsafe fn decode_unsigned_raw<Tgt: PrimaryUInt>(data: *const u8) -> Result<(Tgt, usize), ()> {
+    ///
+    /// # Safety
+    ///
+    /// `data` must point to a valid varint-encoded byte sequence long enough to decode a `Tgt`.
+    pub const unsafe fn decode_unsigned_raw<Tgt: PrimaryUInt>(data: *const u8) -> Result<(Tgt, usize), DecodeError> {
         if let Ok((v, len)) =
             unsafe { decode_unsigned_imp::<Tgt::CalcFitted>(data, const { Tgt::CalcFitted::BITS - Tgt::BITS }, const { Self::max_bytes_of::<Tgt>() }) }
         {
             Ok((CInt::cast_as(v), len))
         } else {
-            Err(())
+            Err(DecodeError)
         }
     }
 
     /// decode bytes slice which len encoded as varint
-    pub const fn decode_slice<Tgt: PrimaryUInt>(data: &[u8]) -> Result<(&[u8], usize), ()> {
+    pub const fn decode_slice<Tgt: PrimaryUInt>(data: &[u8]) -> Result<(&[u8], usize), DecodeError> {
         if let Ok((v, hdr_len)) = unsafe { decode_unsigned_imp::<Tgt::CalcFitted>(data.as_ptr(), const { Tgt::CalcFitted::BITS - Tgt::BITS }, data.len()) } {
             let len = CInt::cast_as(v);
             let total = len + hdr_len;
-            let true = total <= data.len() else { return Err(()) };
+            let true = total <= data.len() else { return Err(DecodeError) };
             Ok((unsafe { core::slice::from_raw_parts(data.as_ptr().add(hdr_len), len) }, total))
         } else {
-            Err(())
+            Err(DecodeError)
         }
     }
 
-    /// decode bytes slice which len encoded as varint
-    pub const unsafe fn decode_slice_raw<Tgt: PrimaryUInt>(data: *const u8) -> Result<(&'static [u8], usize), ()> {
+    /// decode bytes slice which len encoded as varint from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// `data` must point to a valid varint-encoded length followed by at least that many bytes of payload.
+    pub const unsafe fn decode_slice_raw<Tgt: PrimaryUInt>(data: *const u8) -> Result<(&'static [u8], usize), DecodeError> {
         if let Ok((v, hdr_len)) =
             unsafe { decode_unsigned_imp::<Tgt::CalcFitted>(data, const { Tgt::CalcFitted::BITS - Tgt::BITS }, const { Self::max_bytes_of::<Tgt>() }) }
         {
             let len = CInt::cast_as(v);
             Ok((unsafe { core::slice::from_raw_parts(data.add(hdr_len), len) }, len + hdr_len))
         } else {
-            Err(())
+            Err(DecodeError)
         }
     }
 
@@ -116,32 +128,36 @@ impl VarInt {
     }
 
     /// decode PrimaryInt, for signed varint then zigzag, for unsigned only varint
-    pub const fn decode<Tgt: PrimaryInt>(data: &[u8]) -> Result<(Tgt, usize), ()> {
-        let Ok((v, len)) = Self::decode_unsigned::<Tgt::Unsigned>(data) else { return Err(()) };
+    pub const fn decode<Tgt: PrimaryInt>(data: &[u8]) -> Result<(Tgt, usize), DecodeError> {
+        let Ok((v, len)) = Self::decode_unsigned::<Tgt::Unsigned>(data) else { return Err(DecodeError) };
         if Tgt::SIGNED { Ok((CInt::cast_from_signed(Self::decode_zigzag(v)), len)) } else { Ok((CInt::cast_from_unsigned(v), len)) }
     }
 
-    /// decode PrimaryInt, for signed varint then zigzag, for unsigned only varint
-    pub const unsafe fn decode_raw<Tgt: PrimaryInt>(data: *const u8) -> Result<(Tgt, usize), ()> {
-        let Ok((v, len)) = (unsafe { Self::decode_unsigned_raw::<Tgt::Unsigned>(data) }) else { return Err(()) };
+    /// decode PrimaryInt from a raw pointer, for signed: varint then zigzag, for unsigned: only varint.
+    ///
+    /// # Safety
+    ///
+    /// `data` must point to a valid varint-encoded byte sequence long enough to decode a `Tgt`.
+    pub const unsafe fn decode_raw<Tgt: PrimaryInt>(data: *const u8) -> Result<(Tgt, usize), DecodeError> {
+        let Ok((v, len)) = (unsafe { Self::decode_unsigned_raw::<Tgt::Unsigned>(data) }) else { return Err(DecodeError) };
         if Tgt::SIGNED { Ok((CInt::cast_from_signed(Self::decode_zigzag(v)), len)) } else { Ok((CInt::cast_from_unsigned(v), len)) }
     }
 }
 
-const unsafe fn decode_unsigned_imp<Tgt: PrimaryInt + CalcFitted>(data: *const u8, zero_bits: u32, max_bytes: usize) -> Result<(Tgt, usize), ()> {
+const unsafe fn decode_unsigned_imp<Tgt: PrimaryInt + CalcFitted>(data: *const u8, zero_bits: u32, max_bytes: usize) -> Result<(Tgt, usize), DecodeError> {
     let mut v = Tgt::ZERO;
     let mut i = 0;
     loop {
-        let true = i < max_bytes else { return Err(()) };
+        let true = i < max_bytes else { return Err(DecodeError) };
         let byte = unsafe { data.add(i).read() };
-        let Some(nv) = CInt::checked_shl(CInt::cast_as(byte & 0b0111_1111), DATA_BITS * i as u32) else { return Err(()) };
+        let Some(nv) = CInt::checked_shl(CInt::cast_as(byte & 0b0111_1111), DATA_BITS * i as u32) else { return Err(DecodeError) };
         v = CInt::bitor(v, nv);
         i += 1;
         if byte & 0b1000_0000 == 0 {
             break;
         }
     }
-    if CInt::leading_zeros(v) >= zero_bits { Ok((v, i)) } else { Err(()) }
+    if CInt::leading_zeros(v) >= zero_bits { Ok((v, i)) } else { Err(DecodeError) }
 }
 
 const fn encode_unsigned_imp<Src: PrimaryInt + CalcFitted>(mut v: Src, buf: &mut [u8]) -> Option<&mut [u8]> {
