@@ -19,6 +19,4 @@ proc-macro2 = "1"
 syn = { version = "2", features = ["full"] }
 quote = "1"
 
-# Enable const trait impls in generated code (requires nightly Rust with `const_trait_impl` feature)
-[features]
-const-trait = []
+

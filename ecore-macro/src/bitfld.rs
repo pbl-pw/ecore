@@ -38,10 +38,7 @@ pub fn bitfld(attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> s
 }
 
 fn const_trait() -> Option<syn::Token![const]> {
-    #[cfg(feature = "const-trait")]
-    return Some(syn::Token![const](proc_macro2::Span::call_site()));
-    #[cfg(not(feature = "const-trait"))]
-    return None;
+    None
 }
 
 pub(crate) mod bitenum;
