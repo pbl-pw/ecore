@@ -1,6 +1,6 @@
 [package]
 name = "ecore"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2024"
 rust-version = "1.87.0"
 description = "no_std bit-level integer types, bitfield structs/enums, ranged integers, and enum maps"

@@ -1,6 +1,9 @@
 use core::num::NonZero;
 
-use crate::bitint::BitInt;
+use crate::{
+    bitint::BitInt,
+    repr::{PlainUncheckable, Uncheckable},
+};
 
 macro_rules! impl_int {
     ($type:ty) => {
@@ -14,6 +17,21 @@ macro_rules! impl_int {
             pub const fn new_non_zero(v: BitInt<$type, BITS>) -> Option<Self> {
                 let Some(v) = NonZero::new(v.0) else { return None };
                 Some(BitInt(v))
+            }
+        }
+
+        unsafe impl<const BITS: u32> PlainUncheckable for BitInt<NonZero<$type>, BITS> {}
+
+        impl<const BITS: u32> Uncheckable for BitInt<NonZero<$type>, BITS> {
+            type UncheckedRaw = BitInt<$type, BITS>;
+
+            fn raw_value(sf: Self) -> Self::UncheckedRaw {
+                sf.get()
+            }
+
+            fn try_from_raw_value(raw: Self::UncheckedRaw) -> Result<Self, Self::UncheckedRaw> {
+                let Some(v) = Self::new_non_zero(raw) else { return Err(raw) };
+                Ok(v)
             }
         }
     };
