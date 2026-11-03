@@ -33,14 +33,19 @@ pub fn map_enum_derive(item: proc_macro::TokenStream) -> syn::Result<proc_macro2
         if discriminant.is_empty() {
             return error(item.ident.span(), "Not unit-only enum derive MapEnum require 'discriminant' attribute");
         }
+        let mut disname = None;
         for attr in discriminant.into_iter() {
             match &attr.meta {
                 syn::Meta::List(syn::MetaList { tokens, .. }) => quote! { #[ #tokens ] }.to_tokens(&mut out),
                 syn::Meta::Path(..) => {}
-                syn::Meta::NameValue(value) => quote! { #[ #value ] }.to_tokens(&mut out),
+                syn::Meta::NameValue(syn::MetaNameValue { value: syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Str(value), .. }), .. }) if disname.is_none() => {
+                    disname = Some(value)
+                }
+                _ => return error(attr.span(), "Invalid 'discriminant' attribute"),
             }
         }
-        let disname = format_ident!("{}Discriminant", name);
+        let disname =
+            if let Some(disname) = disname { format_ident!("{}", &disname.value(), span = disname.span()) } else { format_ident!("{}Discriminant", name) };
         let patterns = item.variants.iter().map(|variant| {
             let name = &variant.ident;
             let fields = match variant.fields {

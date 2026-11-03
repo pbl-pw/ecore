@@ -20,7 +20,7 @@ fn error<T>(span: proc_macro2::Span, message: impl std::fmt::Display) -> syn::Re
 ///
 /// **note: keep variant value same as define order (0..variants_count) will get optimized runtime performance**,
 ///
-/// For tagged enum must add 'discriminant' or 'discriminant(attr_for_discriminant_enum)' attribute to define additional discriminant enum
+/// For tagged enum must add at least one 'discriminant' or 'discriminant = "DiscriminantName"' or 'discriminant(attr_for_discriminant_enum)' attribute to define additional discriminant enum
 /// ```ignore
 /// #[derive(MapEnum)]
 /// #[discriminant(derive(Clone, Copy))]
@@ -33,6 +33,27 @@ fn error<T>(span: proc_macro2::Span, message: impl std::fmt::Display) -> syn::Re
 /// ```ignore
 /// #[derive(Clone, Copy)]
 /// enum Enum1Discriminant {
+///     Arm1,
+///     Arm2
+/// }
+/// ```
+///
+/// Sample2:
+/// ```ignore
+/// #[derive(MapEnum)]
+/// #[discriminant = "Enum2Id"]
+/// #[discriminant(bitfld(u1))]
+/// #[discriminant(derive(Clone, Copy))]
+/// enum Enum2 {
+///     Arm1(u8),
+///     Arm2
+/// }
+/// ```
+/// will generate discriminant enum additionally:
+/// ```ignore
+/// #[bitfld(u1)]
+/// #[derive(Clone, Copy)]
+/// enum Enum2Id {
 ///     Arm1,
 ///     Arm2
 /// }
