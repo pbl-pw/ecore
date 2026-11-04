@@ -369,36 +369,26 @@ impl<Fld: BitsCast, const N: usize> BitsCast for [Fld; N] {
         let mut shift = 0;
         for fld in sf.into_iter() {
             v |= Fld::into_underlying::<Bits>(fld) << shift;
-            shift *= Fld::BITS;
+            shift += Fld::BITS;
         }
         v
     }
 }
 
-impl<Ids: MapEnum<Array: Array<Map<Fld>: Copy>>, Fld: BitsCast> BitsCast for EnumMap<Ids, Fld> {
+impl<Ids: MapEnum<Array: Array<Map<Fld>: BitsCast>>, Fld: BitsCast> BitsCast for EnumMap<Ids, Fld> {
     const BITS: u32 = {
         assert!(Ids::Array::LEN <= 128);
         Ids::Array::LEN as u32 * Fld::BITS
     };
 
-    fn from_underlying<Bits: PrimaryInt>(mut v: Bits) -> Self {
-        let mut out = MaybeUninit::<Self>::uninit();
-        let buf = unsafe { out.assume_init_mut() }.as_array_mut().as_mut();
-        for fld in buf.iter_mut() {
-            *fld = Fld::from_underlying(v);
-            v >>= Fld::BITS;
-        }
-        unsafe { out.assume_init() }
+    #[inline]
+    fn from_underlying<Bits: PrimaryInt>(v: Bits) -> Self {
+        Self::from_array(BitsCast::from_underlying(v))
     }
 
+    #[inline]
     fn into_underlying<Bits: PrimaryInt>(sf: Self) -> Bits {
-        let mut v = Bits::ZERO;
-        let mut shift = 0;
-        for fld in sf.as_array().as_ref() {
-            v |= Fld::into_underlying::<Bits>(*fld) << shift;
-            shift *= Fld::BITS;
-        }
-        v
+        BitsCast::into_underlying(sf.into_array())
     }
 }
 

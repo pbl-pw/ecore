@@ -53,6 +53,8 @@ fn rw() {
     assert_eq!(bs.pbool().with(true), TeBs(256));
     assert_eq!(bs.pbool().with(false), TeBs(0));
     assert_eq!(bs.nbool().with(true), TeBs(0));
+    assert_eq!(bs.ary().with([true, false, false, false]), TeBs(1 << 8));
+    assert_eq!(bs.ary().with([false, true, false, false]), TeBs(1 << 9));
     assert_eq!(bs.nbool().with(false), TeBs(256));
     assert_eq!(bs.nbool().with(false).ok().with(255), TeBs(511));
     assert_eq!(bs.ary().cget::<0>().with(true), TeBs(1 << 8));
