@@ -1,6 +1,6 @@
 [package]
 name = "ealloc"
-version = "0.10.0"
+version = "0.11.0"
 edition = "2024"
 rust-version = "1.87.0"
 description = "no_std memory allocator with pluggable free-block management strategies (TLSF, first-fit, half-tree)"
@@ -12,7 +12,7 @@ categories = ["embedded", "no-std", "memory-management"]
 readme = "README.md"
 
 [dependencies]
-ecore = { version = "0.10.0", path = "../ecore" }
+ecore = { version = "0.11.0", path = "../ecore" }
 const-default = { version = "1", default-features = false }
 rand = { version = "0", optional = true }
 

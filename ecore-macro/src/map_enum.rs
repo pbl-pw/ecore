@@ -10,12 +10,15 @@ pub fn map_enum_derive(item: proc_macro::TokenStream) -> syn::Result<proc_macro2
     let discriminant: Vec<_> = item.attrs.iter().filter(|attr| attr.path().is_ident("discriminant")).collect();
     let count = item.variants.len();
     let mut names = Vec::new();
+    let mut discriminants = Vec::new();
     names.reserve_exact(count);
+    discriminants.reserve_exact(count);
     let mut nature = true;
     let mut not_unit_only = false;
     for (id, variant) in item.variants.iter().enumerate() {
         not_unit_only = not_unit_only || !matches!(variant.fields, syn::Fields::Unit);
         names.push(&variant.ident);
+        discriminants.push(&variant.discriminant);
         let true = nature else { continue };
         let Some((_, discriminant)) = &variant.discriminant else { continue };
         nature = if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(lit), .. }) = discriminant
@@ -56,21 +59,13 @@ pub fn map_enum_derive(item: proc_macro::TokenStream) -> syn::Result<proc_macro2
             quote!(Self::#name #fields => #disname::#name)
         });
         let repr = syn::Ident::new(&format!("u{}", (usize::BITS - names.len().leading_zeros()).next_multiple_of(8).next_power_of_two()), name.span());
+        let variants = names
+            .iter()
+            .zip(discriminants)
+            .map(|(name, discriminant)| if let Some((eq, disc)) = discriminant { quote!(#name #eq #disc) } else { quote!(#name) });
         quote! {
             #[repr(#repr)]
-            #vis enum #disname { #(#names),* }
-             impl #disname {
-                #vis const fn get_index(&self) -> usize { unsafe { core::ptr::read(self) as usize } }
-            }
-
-            impl MapEnum for #disname {
-                type Discriminant = Self;
-                type Array = [(); #count];
-                fn iter() -> impl ExactSizeIterator<Item = Self::Discriminant> { (0..#count).map(|id| unsafe{core::mem::transmute_copy(&id)}) }
-                fn get_index(&self) -> usize { Self::get_index(self) }
-            }
-
-            unsafe impl PlainMapEnum for #disname { type NatureInt = #repr; }
+            #vis enum #disname { #(#variants),* }
 
             impl #impl_generic MapEnum for #name #type_generic #where_generic {
                 type Discriminant = #disname;
@@ -80,6 +75,39 @@ pub fn map_enum_derive(item: proc_macro::TokenStream) -> syn::Result<proc_macro2
             }
         }
         .to_tokens(&mut out);
+        if nature {
+            quote! {
+                impl #disname {
+                    #vis const fn get_index(&self) -> usize { unsafe { core::ptr::read(self) as usize } }
+                }
+
+                impl MapEnum for #disname {
+                    type Discriminant = Self;
+                    type Array = [(); #count];
+                    fn iter() -> impl ExactSizeIterator<Item = Self::Discriminant> { (0..#count).map(|id| unsafe{core::mem::transmute_copy(&id)}) }
+                    fn get_index(&self) -> usize { Self::get_index(self) }
+                }
+
+                unsafe impl PlainMapEnum for #disname { type NatureInt = #repr; }
+            }
+            .to_tokens(&mut out);
+        } else {
+            let ntoi = names.iter().enumerate().map(|(id, varname)| quote!(#disname::#varname => #id));
+            let iton = names.iter().enumerate().map(|(id, varname)| quote!(#id => #disname::#varname));
+            quote! {
+                impl #disname {
+                    #vis const fn get_index(&self) -> usize { match self { #( #ntoi ),* } }
+                }
+
+                impl MapEnum for #disname {
+                    type Discriminant = Self;
+                    type Array = [(); #count];
+                    fn iter() -> impl ExactSizeIterator<Item = Self> { (0..#count).map(|id| match id { #( #iton , )* _ => unsafe { core::hint::unreachable_unchecked() } }) }
+                    fn get_index(&self) -> usize { Self::get_index(self) }
+                }
+            }
+            .to_tokens(&mut out);
+        }
     } else {
         if let [first, ..] = discriminant.as_slice() {
             return error(first.span(), "Not tagged enum can't define additional 'Discriminant' enum");
