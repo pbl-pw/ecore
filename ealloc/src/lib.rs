@@ -1,11 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 
-use core::{
-    alloc::Layout,
-    cell::UnsafeCell,
-    ptr::{NonNull, copy_nonoverlapping},
-};
+use core::{alloc::Layout, cell::UnsafeCell, ptr::NonNull};
 
 use ecore::int::PrimaryUInt;
 
@@ -25,11 +21,16 @@ mod half_tree;
 mod ptr;
 mod tlsf;
 
+#[rustversion::since(1.100)]
+pub use core::alloc::{AllocError, Allocator};
+
+#[rustversion::before(1.100)]
 /// Error returned when memory allocation fails.
 ///
 /// This is a zero-sized type indicating the allocator could not satisfy the request.
 pub struct AllocError;
 
+#[rustversion::before(1.100)]
 /// Custom memory allocator trait, similar to [`core::alloc::Allocator`].
 ///
 /// # Safety
@@ -58,7 +59,7 @@ pub unsafe trait Allocator {
     unsafe fn grow(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         debug_assert!(new_layout.size() >= old_layout.size(), "`new_layout.size()` must be greater than or equal to `old_layout.size()`");
         let new_ptr = self.allocate(new_layout)?;
-        unsafe { copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr().cast(), old_layout.size()) }
+        unsafe { core::ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr().cast(), old_layout.size()) }
         unsafe { self.deallocate(ptr, old_layout) }
         Ok(new_ptr)
     }
@@ -69,7 +70,7 @@ pub unsafe trait Allocator {
     unsafe fn grow_zeroed(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         debug_assert!(new_layout.size() >= old_layout.size(), "`new_layout.size()` must be greater than or equal to `old_layout.size()`");
         let new_ptr = self.allocate_zeroed(new_layout)?;
-        unsafe { copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr().cast(), old_layout.size()) }
+        unsafe { core::ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr().cast(), old_layout.size()) }
         unsafe { self.deallocate(ptr, old_layout) }
         Ok(new_ptr)
     }
@@ -81,7 +82,7 @@ pub unsafe trait Allocator {
     unsafe fn shrink(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         debug_assert!(new_layout.size() <= old_layout.size(), "`new_layout.size()` must be smaller than or equal to `old_layout.size()`");
         let new_ptr = self.allocate(new_layout)?;
-        unsafe { copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr().cast(), new_layout.size()) }
+        unsafe { core::ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr().cast(), new_layout.size()) }
         unsafe { self.deallocate(ptr, old_layout) }
         Ok(new_ptr)
     }
