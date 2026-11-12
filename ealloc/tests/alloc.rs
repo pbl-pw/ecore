@@ -9,6 +9,8 @@ fn gen_random_layout(max_align: usize, max_size: usize) -> Layout {
     Layout::from_size_align(size, align).unwrap()
 }
 
+// `Allocator` methods return the rustversion-gated `AllocError` (see `ealloc/src/lib.rs`).
+#[allow(clippy::incompatible_msrv)]
 fn test_alloc(allocator: &impl Allocator, done: &AtomicBool, max_align: usize, max_size: usize) {
     let mut allocated = Vec::new();
 

@@ -10,6 +10,9 @@ use core::{
 
 use ecore::int::PrimaryUInt;
 
+// `AllocError` is the rustversion-gated `core::alloc::AllocError` on Rust >= 1.100, with a
+// local fallback on older compilers (see `lib.rs`). Clippy's `incompatible_msrv` lint cannot
+// see through that gate, so items using it opt out of just that lint.
 use super::{AllocError, Allocator, AllocatorMutex, FreeBlockManager, LeanFlexAllocator, ptr::Ptr};
 
 pub use self::joint::ElementCount;
@@ -80,6 +83,7 @@ impl<StateElement: PrimaryUInt, Element> Ptr<Block<StateElement, Element>> {
     }
 
     /// block must mark used, because optimize trick
+    #[allow(clippy::incompatible_msrv)]
     fn user_block(block: Option<Self>) -> Result<NonNull<[u8]>, AllocError> {
         let Some(block) = block else { return Err(AllocError) };
         Ok(NonNull::slice_from_raw_parts(block.raw().cast(), block.head_state().usable_bytes_len()))
@@ -393,6 +397,7 @@ impl<Mutex: AllocatorMutex, StateElement: PrimaryUInt, Element, Manager: FreeBlo
     }
 
     /// Allocate memory for type `T`
+    #[allow(clippy::incompatible_msrv)]
     pub fn allocate_type<T>(&self) -> Result<NonNull<T>, AllocError> {
         let guard = self.mutex.lock();
         let ptr = if align_of::<T>() <= RawAllocator::<Manager>::ELEMENT_ALIGN {
@@ -437,6 +442,7 @@ impl<Mutex: AllocatorMutex, StateElement: PrimaryUInt, Element, Manager: FreeBlo
     }
 }
 
+#[allow(clippy::incompatible_msrv)]
 unsafe impl<Mutex: AllocatorMutex, Manager: FreeBlockManager + ?Sized> Allocator for LeanFlexAllocator<Mutex, Manager> {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         Ptr::user_block(Self::allocate(self, layout))
